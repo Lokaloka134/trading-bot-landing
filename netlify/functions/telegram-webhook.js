@@ -1,5 +1,4 @@
 const https = require('https');
-const BUCKET_ID = '88pDDxZfrHSPp1EU9hhoc8';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || '6286421972';
 
@@ -74,10 +73,9 @@ exports.handler = async (event, context) => {
       const isApprove = callbackData.startsWith('approve_');
       const txId = callbackData.replace('approve_', '').replace('reject_', '');
 
-      // Fetch transaction from KV store
-      const kvGetUrl = `https://kvdb.io/${BUCKET_ID}/${txId}`;
-      const kvRes = await makeRequest(kvGetUrl, 'GET');
-      if (!kvRes.ok) {
+      // Fetch transaction from database
+      const dbRes = await makeRequest(`https://api.restful-api.dev/objects/${txId}`, 'GET');
+      if (!dbRes.ok) {
         await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, 'POST', {
           'Content-Type': 'application/json'
         }, {
@@ -88,13 +86,18 @@ exports.handler = async (event, context) => {
         return { statusCode: 200, headers, body: 'Transaction not found' };
       }
 
-      const txData = JSON.parse(kvRes.body);
+      const dbData = JSON.parse(dbRes.body);
+      const txData = dbData.data;
       txData.status = isApprove ? 'approved' : 'rejected';
 
-      // Save updated status back to KV store
-      await makeRequest(kvGetUrl, 'POST', {
+      // Save updated status back to database (PUT)
+      const putData = {
+        name: 'payment_transaction',
+        data: txData
+      };
+      await makeRequest(`https://api.restful-api.dev/objects/${txId}`, 'PUT', {
         'Content-Type': 'application/json'
-      }, txData);
+      }, putData);
 
       // Answer Telegram to clear loading state
       await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, 'POST', {

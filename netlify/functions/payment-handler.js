@@ -1,5 +1,4 @@
 const https = require('https');
-const BUCKET_ID = '88pDDxZfrHSPp1EU9hhoc8'; // Registered active KVDB bucket ID
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || '6286421972';
 
@@ -61,12 +60,13 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing txId' }) };
       }
 
-      const res = await makeRequest(`https://kvdb.io/${BUCKET_ID}/${txId}`, 'GET');
+      const res = await makeRequest(`https://api.restful-api.dev/objects/${txId}`, 'GET');
       if (!res.ok) {
         return { statusCode: 404, headers, body: JSON.stringify({ error: 'Transaction not found' }) };
       }
 
-      const data = JSON.parse(res.body);
+      const dbData = JSON.parse(res.body);
+      const data = dbData.data;
       return {
         statusCode: 200,
         headers,
@@ -116,18 +116,22 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing fields' }) };
       }
 
-      // Generate a unique transaction ID
-      const txId = 'tx_' + Math.random().toString(36).substring(2, 11);
+      // Save pending transaction to restful-api.dev database
+      const pmtData = {
+        name: 'payment_transaction',
+        data: { status: 'pending', name, utr, amount, tgUsername }
+      };
 
-      // Save pending transaction to KV store
-      const pmtData = { status: 'pending', name, utr, amount, tgUsername };
-      const kvRes = await makeRequest(`https://kvdb.io/${BUCKET_ID}/${txId}`, 'POST', {
+      const dbRes = await makeRequest('https://api.restful-api.dev/objects', 'POST', {
         'Content-Type': 'application/json'
       }, pmtData);
 
-      if (!kvRes.ok) {
-        throw new Error('Failed to save to KV store');
+      if (!dbRes.ok) {
+        throw new Error('Failed to save to database');
       }
+
+      const dbData = JSON.parse(dbRes.body);
+      const txId = dbData.id;
 
       // If token is configured, alert the admin on Telegram
       if (TELEGRAM_BOT_TOKEN) {
