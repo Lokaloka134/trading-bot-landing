@@ -79,6 +79,37 @@ exports.handler = async (event, context) => {
     // ----------------------------------------------------
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body);
+
+      // Support Diagnostics Test Action
+      if (body.action === 'test') {
+        if (!TELEGRAM_BOT_TOKEN) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: 'TELEGRAM_BOT_TOKEN environment variable is not configured in Netlify.' }) };
+        }
+        
+        const tgRes = await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, 'POST', {
+          'Content-Type': 'application/json'
+        }, {
+          chat_id: OWNER_CHAT_ID,
+          text: `🧪 *ApexScanner Diagnostics* 🧪\n\n` +
+            `✅ Connection Status: Active\n` +
+            `🤖 Bot Username: @ApexVerifyyyBot\n` +
+            `👤 Owner ID: ${OWNER_CHAT_ID}\n\n` +
+            `If you received this, your environment variables and webhook configuration are 100% correct!`,
+          parse_mode: 'Markdown'
+        });
+
+        if (!tgRes.ok) {
+          let errMsg = 'Unknown error';
+          try {
+            const errData = JSON.parse(tgRes.body);
+            errMsg = errData.description || 'Unknown error';
+          } catch(e) {}
+          return { statusCode: 400, headers, body: JSON.stringify({ error: `Telegram Bot API Error: "${errMsg}". Make sure you have opened @ApexVerifyyyBot on Telegram and clicked Start first.` }) };
+        }
+
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Test message sent successfully! Check your Telegram.' }) };
+      }
+
       const { name, utr, amount, tgUsername } = body;
 
       if (!name || !utr || !amount || !tgUsername) {
