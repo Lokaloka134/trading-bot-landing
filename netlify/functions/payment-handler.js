@@ -1,9 +1,45 @@
+const https = require('https');
 const BUCKET_ID = 'apexscan_pmt_v1_d8923a'; // Unique KVDB bucket ID
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || '6286421972';
 
+// Promise-based HTTPS request helper for maximum compatibility (no external dependencies)
+function makeRequest(url, method, headers = {}, data = null) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: method,
+      headers: {
+        ...headers,
+        'User-Agent': 'Netlify-Function'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => body += chunk);
+      res.on('end', () => {
+        resolve({
+          statusCode: res.statusCode,
+          headers: res.headers,
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          body: body
+        });
+      });
+    });
+
+    req.on('error', (err) => reject(err));
+
+    if (data) {
+      req.write(typeof data === 'string' ? data : JSON.stringify(data));
+    }
+    req.end();
+  });
+}
+
 exports.handler = async (event, context) => {
-  // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -25,12 +61,12 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing txId' }) };
       }
 
-      const res = await fetch(`https://kvdb.io/${BUCKET_ID}/${txId}`);
+      const res = await makeRequest(`https://kvdb.io/${BUCKET_ID}/${txId}`, 'GET');
       if (!res.ok) {
         return { statusCode: 404, headers, body: JSON.stringify({ error: 'Transaction not found' }) };
       }
 
-      const data = await res.json();
+      const data = JSON.parse(res.body);
       return {
         statusCode: 200,
         headers,
@@ -54,11 +90,9 @@ exports.handler = async (event, context) => {
 
       // Save pending transaction to KV store
       const pmtData = { status: 'pending', name, utr, amount, tgUsername };
-      const kvRes = await fetch(`https://kvdb.io/${BUCKET_ID}/${txId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pmtData)
-      });
+      const kvRes = await makeRequest(`https://kvdb.io/${BUCKET_ID}/${txId}`, 'POST', {
+        'Content-Type': 'application/json'
+      }, pmtData);
 
       if (!kvRes.ok) {
         throw new Error('Failed to save to KV store');
@@ -73,26 +107,24 @@ exports.handler = async (event, context) => {
           `📱 *Telegram:* ${tgUsername}\n\n` +
           `Is this transaction real?`;
 
-        const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: OWNER_CHAT_ID,
-            text: text,
-            parse_mode: 'Markdown',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  { text: '✅ Yes (Approve)', callback_data: `approve_${txId}` },
-                  { text: '❌ No (Reject)', callback_data: `reject_${txId}` }
-                ]
+        const tgRes = await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, 'POST', {
+          'Content-Type': 'application/json'
+        }, {
+          chat_id: OWNER_CHAT_ID,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '✅ Yes (Approve)', callback_data: `approve_${txId}` },
+                { text: '❌ No (Reject)', callback_data: `reject_${txId}` }
               ]
-            }
-          })
+            ]
+          }
         });
 
         if (!tgRes.ok) {
-          console.error('Failed to notify bot admin:', await tgRes.text());
+          console.error('Failed to notify bot admin:', tgRes.body);
         }
       } else {
         console.warn('TELEGRAM_BOT_TOKEN environment variable not set. Alert not sent.');

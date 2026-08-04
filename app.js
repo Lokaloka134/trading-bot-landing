@@ -521,9 +521,18 @@ if (payForm) {
             startLivePolling(txId, tgUsername);
 
         } catch (err) {
-            console.warn('Backend Function offline, falling back to simulated validation loop.');
-            // Fallback for local testing or when Netlify is building
-            simulateMockVerification(tgUsername);
+            console.warn('Backend Function offline or returned error:', err);
+            // Only allow simulated mock loop when testing locally (localhost, 127.0.0.1, or file:// protocol)
+            const isLocal = window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1' || 
+                            window.location.protocol === 'file:';
+            if (isLocal) {
+                simulateMockVerification(tgUsername);
+            } else {
+                // On the live site, show the error instead of letting them bypass the payment screen!
+                showStep('modal-step-pay');
+                payError.innerText = 'Verification server offline. Please verify that your Netlify environment variables (TELEGRAM_BOT_TOKEN and OWNER_CHAT_ID) are correctly added and active.';
+            }
         }
     });
 }

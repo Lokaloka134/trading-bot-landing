@@ -1,6 +1,43 @@
+const https = require('https');
 const BUCKET_ID = 'apexscan_pmt_v1_d8923a';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || '6286421972';
+
+// Promise-based HTTPS request helper for compatibility (no external dependencies)
+function makeRequest(url, method, headers = {}, data = null) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: method,
+      headers: {
+        ...headers,
+        'User-Agent': 'Netlify-Function'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => body += chunk);
+      res.on('end', () => {
+        resolve({
+          statusCode: res.statusCode,
+          headers: res.headers,
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          body: body
+        });
+      });
+    });
+
+    req.on('error', (err) => reject(err));
+
+    if (data) {
+      req.write(typeof data === 'string' ? data : JSON.stringify(data));
+    }
+    req.end();
+  });
+}
 
 exports.handler = async (event, context) => {
   const headers = { 'Content-Type': 'application/json' };
@@ -23,14 +60,12 @@ exports.handler = async (event, context) => {
       // Security: Only allow the owner to click buttons
       if (senderId !== OWNER_CHAT_ID) {
         // Send alert back to Telegram client
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            callback_query_id: callbackQueryId,
-            text: '🚫 Unauthorized: You are not the administrator.',
-            show_alert: true
-          })
+        await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, 'POST', {
+          'Content-Type': 'application/json'
+        }, {
+          callback_query_id: callbackQueryId,
+          text: '🚫 Unauthorized: You are not the administrator.',
+          show_alert: true
         });
         return { statusCode: 200, headers, body: 'Unauthorized click' };
       }
@@ -41,38 +76,32 @@ exports.handler = async (event, context) => {
 
       // Fetch transaction from KV store
       const kvGetUrl = `https://kvdb.io/${BUCKET_ID}/${txId}`;
-      const kvRes = await fetch(kvGetUrl);
+      const kvRes = await makeRequest(kvGetUrl, 'GET');
       if (!kvRes.ok) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            callback_query_id: callbackQueryId,
-            text: '❌ Transaction not found or expired.',
-            show_alert: true
-          })
+        await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, 'POST', {
+          'Content-Type': 'application/json'
+        }, {
+          callback_query_id: callbackQueryId,
+          text: '❌ Transaction not found or expired.',
+          show_alert: true
         });
         return { statusCode: 200, headers, body: 'Transaction not found' };
       }
 
-      const txData = await kvRes.json();
+      const txData = JSON.parse(kvRes.body);
       txData.status = isApprove ? 'approved' : 'rejected';
 
       // Save updated status back to KV store
-      await fetch(kvGetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(txData)
-      });
+      await makeRequest(kvGetUrl, 'POST', {
+        'Content-Type': 'application/json'
+      }, txData);
 
       // Answer Telegram to clear loading state
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          callback_query_id: callbackQueryId,
-          text: isApprove ? '✅ Approved' : '❌ Rejected'
-        })
+      await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, 'POST', {
+        'Content-Type': 'application/json'
+      }, {
+        callback_query_id: callbackQueryId,
+        text: isApprove ? '✅ Approved' : '❌ Rejected'
       });
 
       // Update Telegram message text to lock it in and remove buttons
@@ -84,16 +113,14 @@ exports.handler = async (event, context) => {
         `-------------------------\n` +
         `📢 *Status:* ${isApprove ? '🟢 APPROVED (Redirected)' : '🔴 REJECTED (Access Denied)'}`;
 
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: OWNER_CHAT_ID,
-          message_id: messageId,
-          text: newText,
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [] } // Clear buttons
-        })
+      await makeRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, 'POST', {
+        'Content-Type': 'application/json'
+      }, {
+        chat_id: OWNER_CHAT_ID,
+        message_id: messageId,
+        text: newText,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [] } // Clear buttons
       });
     }
 
