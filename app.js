@@ -438,8 +438,8 @@ if (btnConfirmPlan) {
     btnConfirmPlan.addEventListener('click', () => {
         // Prepare Payment Details
         const amount = currentPlan.price;
-        const upiId = 'apexscanner@fam'; // Default Fampay UPI ID (customize in production)
-        const payeeName = 'ApexScanner Bot';
+        const upiId = 'panchalkalpeshkumar@fam'; // Actual Fampay UPI ID
+        const payeeName = 'Kalpeshkumar Panchal';
         const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(currentPlan.name)}`;
         
         // Generate UPI QR Code dynamically
@@ -451,6 +451,7 @@ if (btnConfirmPlan) {
         // Setup text labels
         document.getElementById('pay-amount-label').innerText = amount;
         document.getElementById('upi-id-label').innerText = upiId;
+        document.getElementById('upi-name-label').innerText = payeeName;
         
         showStep('modal-step-pay');
     });
