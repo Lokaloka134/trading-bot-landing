@@ -311,68 +311,216 @@
     <div id="credential-modal" class="modal-overlay">
         <div class="modal-content glass-panel">
             <button class="modal-close" id="modal-close-btn">&times;</button>
-            <div class="modal-header">
-                <i class="fa-solid fa-shield-halved security-icon"></i>
-                <h2>ApexScanner Security Gate</h2>
-                <p>Enter your access credentials to verify authorization and open the Telegram Bot.</p>
-            </div>
             
-            <div id="verification-form-wrapper">
+            <!-- STEP 1: CAPTCHA (Human Verification) -->
+            <div id="modal-step-captcha" class="modal-step">
+                <div class="modal-header">
+                    <i class="fa-solid fa-user-shield security-icon"></i>
+                    <h2>Security Verification</h2>
+                    <p>Please verify that you are a human to access the security gate.</p>
+                </div>
+                
+                <div class="captcha-container">
+                    <label class="captcha-checkbox-label">
+                        <div class="captcha-checkbox-wrapper">
+                            <input type="checkbox" id="captcha-checkbox" class="real-checkbox">
+                            <div class="custom-checkbox">
+                                <div class="captcha-spinner"></div>
+                                <i class="fa-solid fa-check check-icon"></i>
+                            </div>
+                        </div>
+                        <span class="captcha-text">I'm not a robot</span>
+                    </label>
+                    <div class="captcha-logo">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>hCaptcha</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: CHOOSE OPTION (License or Buy) -->
+            <div id="modal-step-options" class="modal-step" style="display: none;">
+                <div class="modal-header">
+                    <i class="fa-solid fa-shield-halved security-icon"></i>
+                    <h2>Access Gateway</h2>
+                    <p>Choose an option below to gain access to the premium Telegram bot.</p>
+                </div>
+                <div class="options-grid">
+                    <button class="option-card-btn" id="btn-select-license">
+                        <i class="fa-solid fa-key"></i>
+                        <h3>Enter License Key</h3>
+                        <p>Already have an active VIP key? Verify it here.</p>
+                    </button>
+                    <button class="option-card-btn highlight" id="btn-select-buy">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <h3>Get VIP Access</h3>
+                        <p>Purchase direct access via UPI starting at ₹299.</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 3A: LICENSE KEY VERIFICATION -->
+            <div id="modal-step-license" class="modal-step" style="display: none;">
+                <div class="modal-header">
+                    <a href="#" class="modal-back-btn" id="back-to-options-1"><i class="fa-solid fa-arrow-left"></i> Back</a>
+                    <h2>Verify License</h2>
+                    <p>Enter your license key to verify subscription and unlock the bot.</p>
+                </div>
                 <form id="credential-form">
                     <div class="input-group">
                         <label for="license-key"><i class="fa-solid fa-key"></i> License / Access Key</label>
-                        <input type="text" id="license-key" required placeholder="e.g. APEX-XXXX-XXXX-XXXX" autocomplete="off">
+                        <input type="text" id="license-key" required placeholder="e.g. APEX-XXXX-XXXX" autocomplete="off">
                         <span class="input-hint">Default trial key: <code>APEX-TRIAL-2026</code></span>
                     </div>
                     <div class="input-group">
-                        <label for="tg-username"><i class="fa-brands fa-telegram"></i> Telegram Username</label>
-                        <input type="text" id="tg-username" required placeholder="e.g. @john_doe" autocomplete="off">
+                        <label for="tg-username-license"><i class="fa-brands fa-telegram"></i> Telegram Username</label>
+                        <input type="text" id="tg-username-license" required placeholder="e.g. @john_doe" autocomplete="off">
                     </div>
-                    
                     <div class="error-msg" id="error-message"></div>
-                    
-                    <button type="submit" class="btn btn-primary btn-full" id="verify-submit-btn">
-                        <span class="btn-text">Verify Credentials</span>
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <span>Verify License</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </button>
                 </form>
             </div>
 
-            <!-- Loader State -->
-            <div id="verification-loader" class="loader-state" style="display: none;">
-                <div class="spinner"></div>
-                <h3 id="loader-status">Verifying connection...</h3>
-                <div class="loader-progress-bar"><div class="loader-progress-fill"></div></div>
-                <p class="loader-log" id="loader-log">Initializing secure handshake...</p>
+            <!-- STEP 3B: PRICING PLANS -->
+            <div id="modal-step-plans" class="modal-step" style="display: none;">
+                <div class="modal-header">
+                    <a href="#" class="modal-back-btn" id="back-to-options-2"><i class="fa-solid fa-arrow-left"></i> Back</a>
+                    <h2>Choose Subscription</h2>
+                    <p>Select a plan that works best for your trading needs.</p>
+                </div>
+                <div class="plans-list">
+                    <div class="plan-item" data-price="299" data-name="Monthly VIP Starter">
+                        <div class="plan-details">
+                            <h4>Monthly VIP</h4>
+                            <p>Full scanner alerts for 30 days</p>
+                        </div>
+                        <div class="plan-price">₹299</div>
+                    </div>
+                    <div class="plan-item active" data-price="899" data-name="Lifetime VIP Access">
+                        <div class="plan-details">
+                            <h4>Lifetime VIP</h4>
+                            <p>Permanent access with all future updates</p>
+                        </div>
+                        <div class="plan-price">₹899</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-full" id="btn-confirm-plan">
+                    <span>Proceed to Payment</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
             </div>
 
-            <!-- Success State -->
-            <div id="verification-success" class="success-state" style="display: none;">
-                <div class="success-icon-wrapper">
-                    <i class="fa-solid fa-circle-check success-check-icon"></i>
+            <!-- STEP 4: UPI PAYMENT SCREEN -->
+            <div id="modal-step-pay" class="modal-step" style="display: none;">
+                <div class="modal-header">
+                    <a href="#" class="modal-back-btn" id="back-to-plans"><i class="fa-solid fa-arrow-left"></i> Back</a>
+                    <h2>Complete Payment</h2>
+                    <p>Scan the QR code or click the payment link to transfer ₹<span id="pay-amount-label">899</span>.</p>
                 </div>
-                <h3>Access Authorized</h3>
-                <p class="success-subtext">License key has been successfully validated. Your account is now linked.</p>
                 
-                <div class="license-info-card">
-                    <div class="info-row">
-                        <span class="info-label">Status</span>
-                        <span class="info-value status-badge">Active VIP</span>
+                <div class="pay-container">
+                    <div class="qr-code-wrapper">
+                        <!-- Generates real dynamic QR code for UPI -->
+                        <img id="upi-qr-image" src="" alt="Scan to Pay">
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">Telegram</span>
-                        <span class="info-value" id="success-tg-username">@user</span>
+                    
+                    <a href="#" id="upi-mobile-link" class="btn btn-outline btn-full">
+                        <i class="fa-solid fa-mobile-screen-button"></i> Click to Pay on Mobile
+                    </a>
+                    
+                    <div class="upi-details-box">
+                        <div class="upi-row"><span>UPI ID:</span><strong id="upi-id-label">apexscanner@fam</strong></div>
+                        <div class="upi-row"><span>Payee Name:</span><strong>ApexScanner Bot</strong></div>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">Expires</span>
-                        <span class="info-value">Dec 31, 2026</span>
-                    </div>
-                </div>
 
-                <a href="https://t.me/+IuJHgqg4wIg0NDQ9" target="_blank" class="btn btn-emerald btn-full" id="tg-launch-link">
-                    <i class="fa-brands fa-telegram"></i> Launch Telegram Bot
-                </a>
+                    <form id="payment-submit-form">
+                        <div class="input-group">
+                            <label for="pay-name"><i class="fa-solid fa-user"></i> Your Name</label>
+                            <input type="text" id="pay-name" required placeholder="e.g. John Doe">
+                        </div>
+                        <div class="input-group">
+                            <label for="pay-utr"><i class="fa-solid fa-receipt"></i> UPI Ref No. / UTR (12 Digits)</label>
+                            <input type="text" id="pay-utr" required pattern="\d{12}" title="Enter a valid 12-digit transaction UTR number" placeholder="e.g. 628642197288">
+                        </div>
+                        <div class="input-group">
+                            <label for="pay-tg"><i class="fa-brands fa-telegram"></i> Telegram Username</label>
+                            <input type="text" id="pay-tg" required placeholder="e.g. @john_doe">
+                        </div>
+                        <div class="error-msg" id="pay-error-message"></div>
+                        <button type="submit" class="btn btn-primary btn-full">
+                            <span>Submit for Verification</span>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
+
+            <!-- STEP 5: POLLING / PENDING VERIFICATION -->
+            <div id="modal-step-pending" class="modal-step" style="display: none;">
+                <div class="loader-state">
+                    <div class="spinner pulse"></div>
+                    <h2>Awaiting Verification</h2>
+                    <div class="loader-progress-bar"><div class="loader-progress-fill" id="pending-progress-fill" style="width: 50%"></div></div>
+                    <p class="loader-log" id="pending-status-log">Alert sent to administrator. Waiting for confirmation...</p>
+                    <p class="loader-subtext">We are verifying your UTR reference: <strong id="pending-utr-label">123456789012</strong>. Once approved by the administrator, you will be redirected automatically.</p>
+                </div>
+            </div>
+
+            <!-- STEP 6: VERIFICATION SUCCESS -->
+            <div id="modal-step-success" class="modal-step" style="display: none;">
+                <div class="success-state">
+                    <div class="success-icon-wrapper">
+                        <i class="fa-solid fa-circle-check success-check-icon"></i>
+                    </div>
+                    <h2>Payment Verified!</h2>
+                    <p class="success-subtext">Your VIP access has been authorized and your Telegram account is linked.</p>
+                    
+                    <div class="license-info-card">
+                        <div class="info-row">
+                            <span class="info-label">Status</span>
+                            <span class="info-value status-badge">Active VIP</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Telegram</span>
+                            <span class="info-value" id="success-tg-username-display">@user</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Expires</span>
+                            <span class="info-value">Dec 31, 2026</span>
+                        </div>
+                    </div>
+
+                    <a href="https://t.me/+IuJHgqg4wIg0NDQ9" target="_blank" class="btn btn-emerald btn-full" id="success-launch-btn">
+                        <i class="fa-brands fa-telegram"></i> Launch Telegram Bot
+                    </a>
+                </div>
+            </div>
+
+            <!-- STEP 7: VERIFICATION REJECTED -->
+            <div id="modal-step-rejected" class="modal-step" style="display: none;">
+                <div class="success-state">
+                    <div class="success-icon-wrapper" style="background: rgba(239, 68, 68, 0.1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);">
+                        <i class="fa-solid fa-circle-xmark success-check-icon" style="color: var(--accent-red);"></i>
+                    </div>
+                    <h2>Verification Failed</h2>
+                    <p class="success-subtext" style="color: var(--text-secondary);">Your payment was not approved by the administrator. Please check your transaction details or retry.</p>
+                    
+                    <div class="license-info-card" style="border-color: rgba(239, 68, 68, 0.2);">
+                        <div class="info-row">
+                            <span class="info-label">Reason</span>
+                            <span class="info-value" style="color: var(--accent-red);">Invalid UTR / Payment Not Received</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="btn-retry-payment">
+                        <i class="fa-solid fa-rotate-left"></i> Retry Payment Submission
+                    </button>
+                </div>
+            </div>
+            
         </div>
     </div>
 

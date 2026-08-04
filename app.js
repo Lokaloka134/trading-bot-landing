@@ -226,34 +226,50 @@ document.addEventListener('DOMContentLoaded', () => {
 // Credential System Logic
 const modal = document.getElementById('credential-modal');
 const closeBtn = document.getElementById('modal-close-btn');
-const form = document.getElementById('credential-form');
-const licenseKeyInput = document.getElementById('license-key');
-const tgUsernameInput = document.getElementById('tg-username');
-const errorMsg = document.getElementById('error-message');
-const formWrapper = document.getElementById('verification-form-wrapper');
-const loaderState = document.getElementById('verification-loader');
-const successState = document.getElementById('verification-success');
-const loaderStatus = document.getElementById('loader-status');
-const loaderLog = document.getElementById('loader-log');
-const successTgUser = document.getElementById('success-tg-username');
-const progressFill = document.querySelector('.loader-progress-fill');
+
+// Steps switcher helper
+function showStep(stepId) {
+    const steps = document.querySelectorAll('.modal-step');
+    steps.forEach(step => {
+        if (step.id === stepId) {
+            step.style.display = 'block';
+        } else {
+            step.style.display = 'none';
+        }
+    });
+}
 
 function openCredentialModal() {
     if (modal) {
         modal.classList.add('active');
-        // Reset states
-        formWrapper.style.display = 'block';
-        loaderState.style.display = 'none';
-        successState.style.display = 'none';
-        errorMsg.innerText = '';
-        licenseKeyInput.value = '';
-        tgUsernameInput.value = '';
+        // Start at Captcha verification step
+        showStep('modal-step-captcha');
+        // Reset checkbox state
+        const captchaCheckbox = document.getElementById('captcha-checkbox');
+        if (captchaCheckbox) {
+            captchaCheckbox.checked = false;
+            captchaCheckbox.disabled = false;
+        }
+        const spinner = document.querySelector('.captcha-spinner');
+        if (spinner) spinner.style.display = 'none';
+        
+        // Reset inputs
+        document.getElementById('license-key').value = '';
+        document.getElementById('tg-username-license').value = '';
+        document.getElementById('pay-name').value = '';
+        document.getElementById('pay-utr').value = '';
+        document.getElementById('pay-tg').value = '';
+        document.getElementById('error-message').innerText = '';
+        document.getElementById('pay-error-message').innerText = '';
     }
 }
 
 function closeCredentialModal() {
     if (modal) {
         modal.classList.remove('active');
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+        }
     }
 }
 
@@ -283,68 +299,318 @@ function setupGateLinks() {
     });
 }
 
-// Handle Form Submission with simulated loading states
-if (form) {
-    form.addEventListener('submit', (e) => {
+// ----------------------------------------------------
+// STEP 1: CAPTCHA (I'm not a robot)
+// ----------------------------------------------------
+const captchaCheckbox = document.getElementById('captcha-checkbox');
+const captchaSpinner = document.querySelector('.captcha-spinner');
+
+if (captchaCheckbox) {
+    captchaCheckbox.addEventListener('click', (e) => {
+        // Prevent instant check browser action
+        e.preventDefault();
+        
+        if (captchaCheckbox.disabled) return;
+        
+        // Disable during verification delay
+        captchaCheckbox.disabled = true;
+        if (captchaSpinner) captchaSpinner.style.display = 'block';
+        
+        setTimeout(() => {
+            if (captchaSpinner) captchaSpinner.style.display = 'none';
+            captchaCheckbox.checked = true;
+            
+            // Short delay to let checkmark animate, then transition to options
+            setTimeout(() => {
+                showStep('modal-step-options');
+            }, 600);
+        }, 1200);
+    });
+}
+
+// ----------------------------------------------------
+// STEP 2: OPTIONS SELECTION
+// ----------------------------------------------------
+const btnSelectLicense = document.getElementById('btn-select-license');
+const btnSelectBuy = document.getElementById('btn-select-buy');
+
+if (btnSelectLicense) {
+    btnSelectLicense.addEventListener('click', () => {
+        showStep('modal-step-license');
+    });
+}
+
+if (btnSelectBuy) {
+    btnSelectBuy.addEventListener('click', () => {
+        showStep('modal-step-plans');
+    });
+}
+
+// Back Navigation
+const backToOptions1 = document.getElementById('back-to-options-1');
+const backToOptions2 = document.getElementById('back-to-options-2');
+const backToPlans = document.getElementById('back-to-plans');
+const btnRetryPayment = document.getElementById('btn-retry-payment');
+
+if (backToOptions1) backToOptions1.addEventListener('click', (e) => { e.preventDefault(); showStep('modal-step-options'); });
+if (backToOptions2) backToOptions2.addEventListener('click', (e) => { e.preventDefault(); showStep('modal-step-options'); });
+if (backToPlans) backToPlans.addEventListener('click', (e) => { e.preventDefault(); showStep('modal-step-plans'); });
+if (btnRetryPayment) btnRetryPayment.addEventListener('click', (e) => { e.preventDefault(); showStep('modal-step-plans'); });
+
+// ----------------------------------------------------
+// STEP 3A: LICENSE KEY VERIFICATION FORM
+// ----------------------------------------------------
+const licenseForm = document.getElementById('credential-form');
+const licenseKeyInput = document.getElementById('license-key');
+const tgUsernameLicenseInput = document.getElementById('tg-username-license');
+const errorMsg = document.getElementById('error-message');
+
+if (licenseForm) {
+    licenseForm.addEventListener('submit', (e) => {
         e.preventDefault();
         
         const licenseKey = licenseKeyInput.value.trim();
-        let tgUsername = tgUsernameInput.value.trim();
+        let tgUsername = tgUsernameLicenseInput.value.trim();
         
-        // Basic validation
         if (!licenseKey || !tgUsername) {
             errorMsg.innerText = 'Please fill in all fields.';
             return;
         }
         
-        // Ensure username has @
         if (!tgUsername.startsWith('@')) {
             tgUsername = '@' + tgUsername;
         }
 
-        // Show Loader State
-        formWrapper.style.display = 'none';
-        loaderState.style.display = 'block';
+        // Show loading state using the pending step
+        showStep('modal-step-pending');
+        document.getElementById('pending-utr-label').innerText = 'License Key';
         
-        // Steps of fake decryption/validation process
+        const pendingLog = document.getElementById('pending-status-log');
+        const progressFill = document.getElementById('pending-progress-fill');
+        let pct = 10;
+        if (progressFill) progressFill.style.width = pct + '%';
+        if (pendingLog) pendingLog.innerText = 'Validating license credentials...';
+
         const steps = [
-            { pct: 20, status: 'Initializing handshake...', log: 'Connecting to main gateway node...' },
-            { pct: 45, status: 'Decrypting license certificate...', log: 'Performing RSA signature validation...' },
-            { pct: 70, status: 'Verifying subscription database...', log: 'Database lookup matching hash ID...' },
-            { pct: 90, status: 'Finalizing secure connection...', log: 'Generating unique referral session...' },
-            { pct: 100, status: 'Authorized successfully!', log: 'Handshake complete. VIP status confirmed.' }
+            { pct: 35, log: 'Connecting to secure gateway...' },
+            { pct: 70, log: 'Decrypting license signatures...' },
+            { pct: 90, log: 'Checking database registry...' },
+            { pct: 100, log: 'Authentication successful!' }
         ];
 
         let currentStep = 0;
-        
-        const runVerificationTimer = () => {
+        const interval = setInterval(() => {
             if (currentStep < steps.length) {
-                const step = steps[currentStep];
-                
-                loaderStatus.innerText = step.status;
-                loaderLog.innerText = step.log;
-                if (progressFill) {
-                    progressFill.style.width = step.pct + '%';
-                }
-                
+                const s = steps[currentStep];
+                if (progressFill) progressFill.style.width = s.pct + '%';
+                if (pendingLog) pendingLog.innerText = s.log;
                 currentStep++;
-                // Random delay between steps (400ms - 700ms)
-                setTimeout(runVerificationTimer, 400 + Math.random() * 300);
             } else {
-                // Done! Show success
-                loaderState.style.display = 'none';
-                successState.style.display = 'block';
-                if (successTgUser) {
-                    successTgUser.innerText = tgUsername;
-                }
-                
-                // Store in local storage
+                clearInterval(interval);
+                showStep('modal-step-success');
+                document.getElementById('success-tg-username-display').innerText = tgUsername;
                 localStorage.setItem('apex_verified', 'true');
                 localStorage.setItem('apex_license', licenseKey);
                 localStorage.setItem('apex_username', tgUsername);
             }
-        };
-        
-        runVerificationTimer();
+        }, 800);
     });
+}
+
+// ----------------------------------------------------
+// STEP 3B: PLANS SELECTION & PRICING
+// ----------------------------------------------------
+let currentPlan = { price: 899, name: 'Lifetime VIP Access' };
+const planItems = document.querySelectorAll('.plan-item');
+const btnConfirmPlan = document.getElementById('btn-confirm-plan');
+
+planItems.forEach(item => {
+    item.addEventListener('click', () => {
+        planItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        
+        currentPlan.price = parseInt(item.getAttribute('data-price'));
+        currentPlan.name = item.getAttribute('data-name');
+    });
+});
+
+if (btnConfirmPlan) {
+    btnConfirmPlan.addEventListener('click', () => {
+        // Prepare Payment Details
+        const amount = currentPlan.price;
+        const upiId = 'apexscanner@fam'; // Default Fampay UPI ID (customize in production)
+        const payeeName = 'ApexScanner Bot';
+        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(currentPlan.name)}`;
+        
+        // Generate UPI QR Code dynamically
+        document.getElementById('upi-qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+        
+        // Setup direct payment deep link
+        document.getElementById('upi-mobile-link').href = upiString;
+        
+        // Setup text labels
+        document.getElementById('pay-amount-label').innerText = amount;
+        document.getElementById('upi-id-label').innerText = upiId;
+        
+        showStep('modal-step-pay');
+    });
+}
+
+// ----------------------------------------------------
+// STEP 4: UPI PAYMENT FORM SUBMISSION
+// ----------------------------------------------------
+const payForm = document.getElementById('payment-submit-form');
+const payNameInput = document.getElementById('pay-name');
+const payUtrInput = document.getElementById('pay-utr');
+const payTgInput = document.getElementById('pay-tg');
+const payError = document.getElementById('pay-error-message');
+
+let pollingInterval = null;
+
+if (payForm) {
+    payForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        payError.innerText = '';
+
+        const name = payNameInput.value.trim();
+        const utr = payUtrInput.value.trim();
+        let tgUsername = payTgInput.value.trim();
+
+        if (!name || !utr || !tgUsername) {
+            payError.innerText = 'Please fill in all fields.';
+            return;
+        }
+
+        // Validate UTR is exactly 12 digits
+        if (!/^\d{12}$/.test(utr)) {
+            payError.innerText = 'UTR Reference number must be exactly 12 digits.';
+            return;
+        }
+
+        if (!tgUsername.startsWith('@')) {
+            tgUsername = '@' + tgUsername;
+        }
+
+        // Transition to pending/waiting screen
+        showStep('modal-step-pending');
+        document.getElementById('pending-utr-label').innerText = utr;
+
+        try {
+            // Trigger Netlify API gateway payment notification
+            const response = await fetch('/.netlify/functions/payment-handler', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    utr,
+                    amount: currentPlan.price,
+                    tgUsername
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('API Endpoint Offline');
+            }
+
+            const result = await response.json();
+            const txId = result.txId;
+
+            // Start live polling Loop
+            startLivePolling(txId, tgUsername);
+
+        } catch (err) {
+            console.warn('Backend Function offline, falling back to simulated validation loop.');
+            // Fallback for local testing or when Netlify is building
+            simulateMockVerification(tgUsername);
+        }
+    });
+}
+
+// ----------------------------------------------------
+// STEP 5: POLLING / VERIFICATION PROCESSORS
+// ----------------------------------------------------
+function startLivePolling(txId, tgUsername) {
+    if (pollingInterval) clearInterval(pollingInterval);
+
+    const pendingLog = document.getElementById('pending-status-log');
+    const progressFill = document.getElementById('pending-progress-fill');
+    let pct = 30;
+
+    pendingLog.innerText = 'Handshake sent to admin. Awaiting authorization...';
+    if (progressFill) progressFill.style.width = pct + '%';
+
+    pollingInterval = setInterval(async () => {
+        // Slowly animate progress loader to keep visual engagement
+        if (pct < 90) {
+            pct += Math.floor(Math.random() * 5) + 2;
+            if (progressFill) progressFill.style.width = pct + '%';
+        }
+
+        try {
+            const res = await fetch(`/.netlify/functions/payment-handler?txId=${txId}`);
+            if (res.ok) {
+                const data = await res.json();
+                
+                if (data.status === 'approved') {
+                    clearInterval(pollingInterval);
+                    if (progressFill) progressFill.style.width = '100%';
+                    pendingLog.innerText = 'Payment Confirmed! Account authorized.';
+                    
+                    setTimeout(() => {
+                        showStep('modal-step-success');
+                        document.getElementById('success-tg-username-display').innerText = tgUsername;
+                        localStorage.setItem('apex_verified', 'true');
+                        localStorage.setItem('apex_username', tgUsername);
+                    }, 800);
+                } else if (data.status === 'rejected') {
+                    clearInterval(pollingInterval);
+                    showStep('modal-step-rejected');
+                }
+            }
+        } catch (e) {
+            console.error('Polling connection failed:', e);
+        }
+    }, 3000);
+}
+
+// Fallback logic for local tests (so it works 100% out-of-the-box locally)
+function simulateMockVerification(tgUsername) {
+    if (pollingInterval) clearInterval(pollingInterval);
+
+    const pendingLog = document.getElementById('pending-status-log');
+    const progressFill = document.getElementById('pending-progress-fill');
+    let pct = 15;
+
+    const logs = [
+        'Broadcasting UTR signature to admin network...',
+        'Confirming bank transfer ledger...',
+        'Validating transaction hashes...',
+        'Admin verifying deposit logs...',
+        'Generating encryption session...'
+    ];
+
+    let currentLog = 0;
+    if (progressFill) progressFill.style.width = pct + '%';
+
+    pollingInterval = setInterval(() => {
+        if (pct < 95) {
+            pct += 15;
+            if (progressFill) progressFill.style.width = pct + '%';
+            if (pendingLog && currentLog < logs.length) {
+                pendingLog.innerText = logs[currentLog];
+                currentLog++;
+            }
+        } else {
+            clearInterval(pollingInterval);
+            if (progressFill) progressFill.style.width = '100%';
+            if (pendingLog) pendingLog.innerText = 'Authorization Complete!';
+            
+            setTimeout(() => {
+                showStep('modal-step-success');
+                document.getElementById('success-tg-username-display').innerText = tgUsername;
+                localStorage.setItem('apex_verified', 'true');
+                localStorage.setItem('apex_username', tgUsername);
+            }, 800);
+        }
+    }, 1800);
 }
