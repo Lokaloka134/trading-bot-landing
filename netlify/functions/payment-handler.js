@@ -1,5 +1,5 @@
 const https = require('https');
-const BUCKET_ID = 'apexscan_pmt_v1_d8923a'; // Unique KVDB bucket ID
+const BUCKET_ID = '88pDDxZfrHSPp1EU9hhoc8'; // Registered active KVDB bucket ID
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || '6286421972';
 
