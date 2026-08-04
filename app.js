@@ -180,6 +180,7 @@ function spawnNewSignal() {
 // Setup & Initialize
 document.addEventListener('DOMContentLoaded', () => {
     generateInitialSignals();
+    setupGateLinks();
     
     // Spawn a new signal dynamically every 10 seconds
     setInterval(spawnNewSignal, 10000);
@@ -221,3 +222,129 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(statsSection);
     }
 });
+
+// Credential System Logic
+const modal = document.getElementById('credential-modal');
+const closeBtn = document.getElementById('modal-close-btn');
+const form = document.getElementById('credential-form');
+const licenseKeyInput = document.getElementById('license-key');
+const tgUsernameInput = document.getElementById('tg-username');
+const errorMsg = document.getElementById('error-message');
+const formWrapper = document.getElementById('verification-form-wrapper');
+const loaderState = document.getElementById('verification-loader');
+const successState = document.getElementById('verification-success');
+const loaderStatus = document.getElementById('loader-status');
+const loaderLog = document.getElementById('loader-log');
+const successTgUser = document.getElementById('success-tg-username');
+const progressFill = document.querySelector('.loader-progress-fill');
+
+function openCredentialModal() {
+    if (modal) {
+        modal.classList.add('active');
+        // Reset states
+        formWrapper.style.display = 'block';
+        loaderState.style.display = 'none';
+        successState.style.display = 'none';
+        errorMsg.innerText = '';
+        licenseKeyInput.value = '';
+        tgUsernameInput.value = '';
+    }
+}
+
+function closeCredentialModal() {
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+if (closeBtn) {
+    closeBtn.addEventListener('click', closeCredentialModal);
+}
+
+// Close on clicking outside
+window.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        closeCredentialModal();
+    }
+});
+
+// Setup click triggers on all Telegram gate links
+function setupGateLinks() {
+    const gateLinks = document.querySelectorAll('.tg-gate-link');
+    gateLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (localStorage.getItem('apex_verified') === 'true') {
+                window.open('https://t.me/+IuJHgqg4wIg0NDQ9', '_blank');
+            } else {
+                openCredentialModal();
+            }
+        });
+    });
+}
+
+// Handle Form Submission with simulated loading states
+if (form) {
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const licenseKey = licenseKeyInput.value.trim();
+        let tgUsername = tgUsernameInput.value.trim();
+        
+        // Basic validation
+        if (!licenseKey || !tgUsername) {
+            errorMsg.innerText = 'Please fill in all fields.';
+            return;
+        }
+        
+        // Ensure username has @
+        if (!tgUsername.startsWith('@')) {
+            tgUsername = '@' + tgUsername;
+        }
+
+        // Show Loader State
+        formWrapper.style.display = 'none';
+        loaderState.style.display = 'block';
+        
+        // Steps of fake decryption/validation process
+        const steps = [
+            { pct: 20, status: 'Initializing handshake...', log: 'Connecting to main gateway node...' },
+            { pct: 45, status: 'Decrypting license certificate...', log: 'Performing RSA signature validation...' },
+            { pct: 70, status: 'Verifying subscription database...', log: 'Database lookup matching hash ID...' },
+            { pct: 90, status: 'Finalizing secure connection...', log: 'Generating unique referral session...' },
+            { pct: 100, status: 'Authorized successfully!', log: 'Handshake complete. VIP status confirmed.' }
+        ];
+
+        let currentStep = 0;
+        
+        const runVerificationTimer = () => {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                
+                loaderStatus.innerText = step.status;
+                loaderLog.innerText = step.log;
+                if (progressFill) {
+                    progressFill.style.width = step.pct + '%';
+                }
+                
+                currentStep++;
+                // Random delay between steps (400ms - 700ms)
+                setTimeout(runVerificationTimer, 400 + Math.random() * 300);
+            } else {
+                // Done! Show success
+                loaderState.style.display = 'none';
+                successState.style.display = 'block';
+                if (successTgUser) {
+                    successTgUser.innerText = tgUsername;
+                }
+                
+                // Store in local storage
+                localStorage.setItem('apex_verified', 'true');
+                localStorage.setItem('apex_license', licenseKey);
+                localStorage.setItem('apex_username', tgUsername);
+            }
+        };
+        
+        runVerificationTimer();
+    });
+}

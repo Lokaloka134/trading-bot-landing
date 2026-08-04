@@ -29,7 +29,7 @@
                 <li><a href="#faq">FAQ</a></li>
             </ul>
             <div class="nav-cta">
-                <a href="https://t.me/YOUR_TELEGRAM_BOT_OR_CHANNEL" target="_blank" class="btn btn-outline">
+                <a href="#" class="btn btn-outline tg-gate-link">
                     <i class="fa-brands fa-telegram"></i> Launch Bot
                 </a>
             </div>
@@ -51,7 +51,7 @@
                 <h1>Smart Market Scanning. <br><span class="gradient-text">Instant Trading Alerts.</span></h1>
                 <p>ApexScanner scans multiple timeframes, indicators, and price actions to deliver high-probability trading signals straight to your Telegram. Stop staring at charts all day.</p>
                 <div class="hero-buttons">
-                    <a href="https://t.me/YOUR_TELEGRAM_BOT_OR_CHANNEL" target="_blank" class="btn btn-primary pulse-btn">
+                    <a href="#" class="btn btn-primary pulse-btn tg-gate-link">
                         <i class="fa-brands fa-telegram"></i> Join Telegram Channel
                     </a>
                     <a href="#live-signals" class="btn btn-secondary">
@@ -185,7 +185,7 @@
                     </div>
                 </div>
 
-                <a href="https://t.me/YOUR_TELEGRAM_BOT_OR_CHANNEL" target="_blank" class="btn btn-primary">
+                <a href="#" class="btn btn-primary tg-gate-link">
                     <i class="fa-brands fa-telegram"></i> Get Live Signals
                 </a>
             </div>
@@ -283,7 +283,7 @@
                 </a>
                 <p>Automating financial market analysis. Fast, reliable, and precise.</p>
                 <div class="footer-socials">
-                    <a href="https://t.me/YOUR_TELEGRAM_BOT_OR_CHANNEL" target="_blank"><i class="fa-brands fa-telegram"></i></a>
+                    <a href="#" class="tg-gate-link"><i class="fa-brands fa-telegram"></i></a>
                     <a href="#"><i class="fa-brands fa-twitter"></i></a>
                     <a href="#"><i class="fa-brands fa-github"></i></a>
                 </div>
@@ -294,7 +294,7 @@
                     <li><a href="#features">Features</a></li>
                     <li><a href="#live-signals">Live Signals</a></li>
                     <li><a href="#how-it-works">How It Works</a></li>
-                    <li><a href="https://t.me/YOUR_TELEGRAM_BOT_OR_CHANNEL" target="_blank">Join Telegram</a></li>
+                    <li><a href="#" class="tg-gate-link">Join Telegram</a></li>
                 </ul>
             </div>
             <div class="footer-disclaimer">
@@ -306,6 +306,75 @@
             <p>&copy; 2026 ApexScanner. Built for traders worldwide.</p>
         </div>
     </footer>
+
+    <!-- Credential Verification Modal -->
+    <div id="credential-modal" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <button class="modal-close" id="modal-close-btn">&times;</button>
+            <div class="modal-header">
+                <i class="fa-solid fa-shield-halved security-icon"></i>
+                <h2>ApexScanner Security Gate</h2>
+                <p>Enter your access credentials to verify authorization and open the Telegram Bot.</p>
+            </div>
+            
+            <div id="verification-form-wrapper">
+                <form id="credential-form">
+                    <div class="input-group">
+                        <label for="license-key"><i class="fa-solid fa-key"></i> License / Access Key</label>
+                        <input type="text" id="license-key" required placeholder="e.g. APEX-XXXX-XXXX-XXXX" autocomplete="off">
+                        <span class="input-hint">Default trial key: <code>APEX-TRIAL-2026</code></span>
+                    </div>
+                    <div class="input-group">
+                        <label for="tg-username"><i class="fa-brands fa-telegram"></i> Telegram Username</label>
+                        <input type="text" id="tg-username" required placeholder="e.g. @john_doe" autocomplete="off">
+                    </div>
+                    
+                    <div class="error-msg" id="error-message"></div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full" id="verify-submit-btn">
+                        <span class="btn-text">Verify Credentials</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Loader State -->
+            <div id="verification-loader" class="loader-state" style="display: none;">
+                <div class="spinner"></div>
+                <h3 id="loader-status">Verifying connection...</h3>
+                <div class="loader-progress-bar"><div class="loader-progress-fill"></div></div>
+                <p class="loader-log" id="loader-log">Initializing secure handshake...</p>
+            </div>
+
+            <!-- Success State -->
+            <div id="verification-success" class="success-state" style="display: none;">
+                <div class="success-icon-wrapper">
+                    <i class="fa-solid fa-circle-check success-check-icon"></i>
+                </div>
+                <h3>Access Authorized</h3>
+                <p class="success-subtext">License key has been successfully validated. Your account is now linked.</p>
+                
+                <div class="license-info-card">
+                    <div class="info-row">
+                        <span class="info-label">Status</span>
+                        <span class="info-value status-badge">Active VIP</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Telegram</span>
+                        <span class="info-value" id="success-tg-username">@user</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Expires</span>
+                        <span class="info-value">Dec 31, 2026</span>
+                    </div>
+                </div>
+
+                <a href="https://t.me/+IuJHgqg4wIg0NDQ9" target="_blank" class="btn btn-emerald btn-full" id="tg-launch-link">
+                    <i class="fa-brands fa-telegram"></i> Launch Telegram Bot
+                </a>
+            </div>
+        </div>
+    </div>
 
     <!-- Script File -->
     <script src="app.js"></script>
