@@ -625,34 +625,3 @@ function simulateMockVerification(tgUsername) {
         }
     }, 1800);
 }
-
-// ----------------------------------------------------
-// DIAGNOSTICS: BOT CONNECTION TEST BUTTON
-// ----------------------------------------------------
-const botTestBtn = document.getElementById('bot-test-btn');
-if (botTestBtn) {
-    botTestBtn.addEventListener('click', async () => {
-        botTestBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing...';
-        botTestBtn.disabled = true;
-        
-        try {
-            const res = await fetch('/.netlify/functions/payment-handler', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'test' })
-            });
-            
-            const result = await res.json();
-            if (res.ok) {
-                alert(`✅ ${result.message}`);
-            } else {
-                alert(`❌ Diagnostics Failed:\n\n${result.error || 'Unknown Error'}`);
-            }
-        } catch (err) {
-            alert(`❌ Network Error: Could not connect to Netlify Function.\n\n${err.message}`);
-        } finally {
-            botTestBtn.innerHTML = '<i class="fa-solid fa-wrench"></i> Test Bot';
-            botTestBtn.disabled = false;
-        }
-    });
-}
