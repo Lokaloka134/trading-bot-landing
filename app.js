@@ -440,7 +440,8 @@ if (btnConfirmPlan) {
         const amount = currentPlan.price;
         const upiId = 'panchalkalpeshkumar@fam'; // Actual Fampay UPI ID
         const payeeName = 'Kalpeshkumar Panchal';
-        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(currentPlan.name)}`;
+        // Simplified UPI URI to avoid commercial risk triggers in UPI apps
+        const upiString = `upi://pay?pa=${upiId}&am=${amount}&cu=INR`;
         
         // Generate UPI QR Code dynamically
         document.getElementById('upi-qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
